@@ -1,5 +1,6 @@
 const { ObjectId } = require('mongoose').Types;
-const { User, Thought } = require('../models')
+const { Thought } = require('../models/Thought');
+const { User } = require('../models/User');
 
 // GET USERNAME FROM ID
 const getUsername = async (id) => User.aggregate().find({ _id: id }, 'username').exec();
@@ -12,11 +13,12 @@ module.exports = {
     // GET ALL USERS
     getUsers(req, res) {
         User.find()
+            .select('-__v')
             .then(async (users) => {
-                const userData = { users };
-                return res.json(userData);
+                return res.json(users);
             })
             .catch((err) => {
+                console.log(err);
                 return res.status(500).json(err);
             });
     },
@@ -24,10 +26,13 @@ module.exports = {
     getOneUser(req, res) {
         User.findOne({ _id: req.params.userId })
             .select('-__v')
+            // .populate('thoughts')
+            // .populate('friends')
             .then(async (user) =>
                 !user ? res.status(404).json({ message: 'No users found by that ID' })
-                    : res.json({ user, numberOfFriends: await friendCount }))
+                    : res.json({ user }))
             .catch((err) => {
+                console.log(err);
                 return res.status(500).json(err);
             });
     },
@@ -39,7 +44,7 @@ module.exports = {
     },
     // DELETE USER
     deleteUser(req, res) {
-        User.findOneandRemove({ _id: req.params.userId })
+        User.findOneAndDelete({ _id: req.params.userId })
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No users exists with that ID' })
@@ -51,38 +56,38 @@ module.exports = {
             )
             .then((thought) =>
                 !thought
-                    ? res.status(404).json({ message: 'User delete but no thoughts found' })
+                    ? res.status(404).json({ message: 'User deleted but no thoughts found' })
                     : res.json({ message: 'User deleted' })
             )
             .catch((err) => { res.status(500).json(err); }
             )
     },
-    // ADD THOUGHT TO USER
-    addThought(req, res) {
+    // ADD A FRIEND
+    addFriend(req, res) {
         User.findOneAndUpdate(
             { _id: req.params.userId },
-            { $addToSet: { thoughts: req.body } },
-            { runValidators: true, new: true }
+            { $addToSet: { friends: req.params.friendId } },
+            { new: true }
         )
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
                     : res.json(user)
             )
-            .catch((err) => res.status(500).json(err));
+            .catch((err) => res.status(500).json(err))
     },
-    // REMOVE THOUGHT FROM USER
-    removeThought(req, res) {
+    // REMOVE A FRIEND
+    removeFriend(req, res) {
         User.findOneAndUpdate(
             { _id: req.params.userId },
-            { $pull: { thoughts: { username: getUsername(req.params.userId) } } },
-            { runValidators: true, new: true }
+            { $pull: { friends: req.params.friendId } },
+            { new: true }
         )
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
                     : res.json(user)
             )
-            .catch((err) => res.status(500).json(err));
-    },
+            .catch((err) => res.status(500).json(err))
+    }
 }

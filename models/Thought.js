@@ -1,7 +1,7 @@
 const { Schema, model } = require('mongoose');
 const reactionSchema = require('./Reaction')
-
-//NEED VIRTUALS: reactionCount 
+const { format_date } = require('../utils/helpers')
+const { User } = require('./User')
 
 const thoughtSchema = new Schema(
     {
@@ -14,6 +14,7 @@ const thoughtSchema = new Schema(
         createdAt: {
             type: Date,
             default: Date.now,
+            get: d => format_date(d)
         },
         username: {
             type: String,
@@ -25,10 +26,15 @@ const thoughtSchema = new Schema(
         toJSON: {
             getters: true,
             virtuals: true
-        }
+        },
+        id: false,
     }
 );
 
+thoughtSchema.virtual('reactionCount').get(function () {
+    return this.reactions.length;
+});
+
 const Thought = model('thought', thoughtSchema);
 
-module.exports = Thought;
+module.exports = { Thought, thoughtSchema };
