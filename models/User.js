@@ -1,24 +1,32 @@
 const { Schema, model } = require('mongoose');
-const thoughtSchema = require('./Thought');
-
-//NEED VIRTUALS: friendCount
+const { Thought, thoughtSchema } = require('./Thought');
 
 const userSchema = new Schema(
     {
         username: {
             type: String,
-            required: true,
-            unqiue: true,
-            // unique ?? 
-            // trimmed ?? 
+            required: [true , 'Username is required'],
+            unique: true,
+            trim: true,
         },
-        email: { 
+        email: {
             type: String,
-            required: true,
-            // unique ??
-            // validate email
+            required: [true , 'User requires an email'],
+            unique: true,
+            // VALIDATE EMAIL
+            validate: {
+                validator: function (e) {
+                    return /^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$/.test(e);
+                },
+                message: email => `${email.value} is not a valid email!`
+            }
         },
-        thoughts: [thoughtSchema],
+        thoughts: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'Thought',
+            },
+        ],
         friends: [
             {
                 type: Schema.Types.ObjectId,
@@ -31,11 +39,22 @@ const userSchema = new Schema(
             getters: true,
             virtuals: true,
         },
+        id: false
     }
 );
 
+userSchema.post('find', function (next) {
+    if (this.options._recursed) {
+        return;
+    }
+    this.populate({ path: 'thoughts friends', options: { _recursed: true } });
+    return;
+})
 
+userSchema.virtual('friendCount').get(function () {
+    return this.friends.length;
+});
 
 const User = model('user', userSchema);
 
-module.exports = User;
+module.exports = { User };
