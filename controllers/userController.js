@@ -2,12 +2,26 @@ const { ObjectId } = require('mongoose').Types;
 const { Thought } = require('../models/Thought');
 const { User } = require('../models/User');
 
-// GET USERNAME FROM ID
-const getUsername = async (id) => User.aggregate().find({ _id: id }, 'username').exec();
+const friendFinder = async (id) => {
+    let f = await User.find(
+        { friends: id },
+        { new: true }
+    )
 
-// GET FRIEND COUNT
-const friendCount = async () =>
-    User.aggregate().count('friendCount').then((friends) => friends);
+    if (f) {
+        for (let i = 0; i < f.length; i++) {
+            await User.findOneAndUpdate(
+                { friends: id },
+                { $pull: { friends: id } },
+                { new: true }
+            )
+        }
+    } else {
+        return false;
+    }
+
+    return true;
+}
 
 module.exports = {
     // GET ALL USERS
@@ -26,8 +40,6 @@ module.exports = {
     getOneUser(req, res) {
         User.findOne({ _id: req.params.userId })
             .select('-__v')
-            // .populate('thoughts')
-            // .populate('friends')
             .then(async (user) =>
                 !user ? res.status(404).json({ message: 'No users found by that ID' })
                     : res.json({ user }))
@@ -48,16 +60,17 @@ module.exports = {
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No users exists with that ID' })
-                    : Thought.findOneAndUpdate(
-                        { username: req.params.userId },
-                        { $pull: { username: getUsername(req.params.userId) } },
-                        { new: true }
-                    )
+                    : Thought.deleteMany({ username: user.username })
             )
             .then((thought) =>
                 !thought
                     ? res.status(404).json({ message: 'User deleted but no thoughts found' })
-                    : res.json({ message: 'User deleted' })
+                    : friendFinder(req.params.userId)
+                        .then((friends) =>
+                            !friends
+                                ? res.json({ message: 'User deleted and no matching friends found' })
+                                : res.json({ message: 'User deleted and removed from all friends lists' })
+                        )
             )
             .catch((err) => { res.status(500).json(err); }
             )
@@ -72,7 +85,16 @@ module.exports = {
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
-                    : res.json(user)
+                    : User.findOneAndUpdate(
+                        { _id: req.params.friendId },
+                        { $addToSet: { friends: req.params.userId } },
+                        { new: true }
+                    )
+                        .then((friends) =>
+                            !friends
+                                ? res.status(404).json({ message: `Added ${friends.username} to friends but unable to add back.` })
+                                : res.json({ message: 'Succesfully added friend' })
+                        )
             )
             .catch((err) => res.status(500).json(err))
     },
@@ -86,7 +108,16 @@ module.exports = {
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
-                    : res.json(user)
+                    : User.findOneAndUpdate(
+                        { _id: req.params.friendId },
+                        { $pull: { friends: req.params.userId } },
+                        { new: true }
+                    )
+                        .then((friends) =>
+                            !friends
+                                ? res.status(404).json({ message: `Added ${friends.username} to friends but unable to add back.` })
+                                : res.json({ message: 'Succesfully removed friend' })
+                        )
             )
             .catch((err) => res.status(500).json(err))
     }
