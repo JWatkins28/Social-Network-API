@@ -2,7 +2,9 @@ const { ObjectId } = require('mongoose').Types;
 const { Thought } = require('../models/Thought');
 const { User } = require('../models/User');
 
+// FUNCTION FOR UPDATING ALL FRIENDS LISTS CONTAINING THE DELETED USER'S ID
 const friendFinder = async (id) => {
+    // FIND USERS WITH THIS USER ON THEIR FRIEND LIST
     let f = await User.find(
         { friends: id },
         { new: true }
@@ -54,17 +56,33 @@ module.exports = {
             .then((user) => res.json(user))
             .catch((err) => res.status(500).json(err))
     },
+    // UPDATE USER
+    updateUser(req, res) {
+        User.findOneAndUpdate(
+            { _id: req.params.userId },
+            { $set: req.body },
+            { runValidators: true, new: true }
+        )
+            .then((user) =>
+                !user
+                    ? res.status(404).json({ message: 'No user exists with that ID' })
+                    : res.json(user)
+            )
+            .catch((err) => { res.status(500).json(err) })
+    },
     // DELETE USER
     deleteUser(req, res) {
         User.findOneAndDelete({ _id: req.params.userId })
             .then((user) =>
                 !user
-                    ? res.status(404).json({ message: 'No users exists with that ID' })
+                    ? res.status(404).json({ message: 'No user exists with that ID' })
+                    // DELETE THE ASSOCIATED THOUGHTS
                     : Thought.deleteMany({ username: user.username })
             )
             .then((thought) =>
                 !thought
                     ? res.status(404).json({ message: 'User deleted but no thoughts found' })
+                    // USE FUNCTION I MADE AT THE TOP OF THIS PAGE TO LOOP THROUGH ALL USERS WITH THE DELETED USER AS A FRIEND AND REMOVE THEM FROM THEIR LISTS
                     : friendFinder(req.params.userId)
                         .then((friends) =>
                             !friends
@@ -72,8 +90,7 @@ module.exports = {
                                 : res.json({ message: 'User deleted and removed from all friends lists' })
                         )
             )
-            .catch((err) => { res.status(500).json(err); }
-            )
+            .catch((err) => { res.status(500).json(err); })
     },
     // ADD A FRIEND
     addFriend(req, res) {
@@ -85,6 +102,7 @@ module.exports = {
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
+                    // ADD THE FRIEND REQUESTER TO THE REQUESTEE'S FRIEND LIST AS WELL
                     : User.findOneAndUpdate(
                         { _id: req.params.friendId },
                         { $addToSet: { friends: req.params.userId } },
@@ -108,6 +126,7 @@ module.exports = {
             .then((user) =>
                 !user
                     ? res.status(404).json({ message: 'No user exists with that ID' })
+                    // REMOVE USER FROM FRIEND'S LIST ALSO
                     : User.findOneAndUpdate(
                         { _id: req.params.friendId },
                         { $pull: { friends: req.params.userId } },
