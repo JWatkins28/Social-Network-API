@@ -44,7 +44,7 @@ Once everything is installed you just need to run:
 npm start
 ```
 
-From there you can access the API with Insomnia. 
+From there you can access the API with Insomnia at http://localhost:3001/api/users or http://localhost:3001/api/thoughts. 
 
 ---
 
