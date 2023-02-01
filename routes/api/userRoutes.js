@@ -1,6 +1,6 @@
 const router = require('express').Router();
 // IMPORT USER CONTROLLER FUNCTIONS
-const { getUsers, getOneUser, createUser, deleteUser, addFriend, removeFriend } = require('../../controllers/userController')
+const { getUsers, getOneUser, createUser, deleteUser, updateUser, addFriend, removeFriend } = require('../../controllers/userController')
 
 // ALL THESE ROUTES ARE: /api/users/* 
 
@@ -8,7 +8,7 @@ const { getUsers, getOneUser, createUser, deleteUser, addFriend, removeFriend } 
 router.route('/').get(getUsers).post(createUser);
 
 // GET SINGLE USER / DELETE USER BY ID
-router.route('/:userId').get(getOneUser).delete(deleteUser);
+router.route('/:userId').get(getOneUser).delete(deleteUser).put(updateUser);
 
 // ADD / REMOVE FRIENDS BY ID
 router.route('/:userId/friends/:friendId').post(addFriend).delete(removeFriend);

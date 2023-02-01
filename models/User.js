@@ -43,7 +43,8 @@ const userSchema = new Schema(
     }
 );
 
-userSchema.post('find', function (next) {
+// POPULATE FRIENDS AND THOUGHTS CONSISTENTLY
+userSchema.post('find', function () {
     if (this.options._recursed) {
         return;
     }
